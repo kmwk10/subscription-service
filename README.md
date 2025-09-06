@@ -5,7 +5,7 @@
 1. Clone the repository:
 ```bash
 git clone https://github.com/kmwk10/subscription-service.git
-cd subscription-servic
+cd subscription-service
 ```
 
 2. Copy the example environment file:
