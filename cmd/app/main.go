@@ -26,6 +26,7 @@ func main() {
 	r.Get("/subscriptions/{id}", handler.GetSubscription)
 	r.Put("/subscriptions/{id}", handler.UpdateSubscription)
 	r.Delete("/subscriptions/{id}", handler.DeleteSubscription)
+	r.Get("/subscriptions/summary", handler.SumSubscriptions)
 
 	log.Println("Server started on :" + cfg.AppPort)
 	log.Fatal(http.ListenAndServe(":"+cfg.AppPort, r))

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/kmwk10/subscription-service/internal/models"
 	"github.com/kmwk10/subscription-service/internal/repo"
@@ -75,4 +76,32 @@ func (h *Handler) ListSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(subs)
+}
+
+// GET /subscriptions/summary
+func (h *Handler) SumSubscriptions(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	serviceName := r.URL.Query().Get("service_name")
+	startStr := r.URL.Query().Get("start")
+	endStr := r.URL.Query().Get("end")
+
+	start, err := time.Parse("2006-01", startStr)
+	if err != nil {
+		http.Error(w, "invalid start date", http.StatusBadRequest)
+		return
+	}
+	end, err := time.Parse("2006-01", endStr)
+	if err != nil {
+		http.Error(w, "invalid end date", http.StatusBadRequest)
+		return
+	}
+
+	sum, err := h.Repo.SumPrice(r.Context(), userID, serviceName, start, end)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"total": sum})
 }

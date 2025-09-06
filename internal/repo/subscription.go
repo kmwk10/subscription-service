@@ -1,7 +1,9 @@
 package repo
 
 import (
+	"context"
 	"database/sql"
+	"time"
 
 	"github.com/kmwk10/subscription-service/internal/models"
 )
@@ -59,4 +61,25 @@ func (r *SubscriptionRepo) List() ([]*models.Subscription, error) {
 		subs = append(subs, s)
 	}
 	return subs, nil
+}
+
+func (r *SubscriptionRepo) SumPrice(ctx context.Context, userID string, serviceName string, start, end time.Time) (int, error) {
+	query := `SELECT COALESCE(SUM(price), 0) FROM subscriptions WHERE start_date >= $1 AND start_date <= $2`
+	args := []interface{}{start, end}
+
+	if userID != "" {
+		query += " AND user_id = $3"
+		args = append(args, userID)
+	}
+	if serviceName != "" {
+		query += " AND service_name = $4"
+		args = append(args, serviceName)
+	}
+
+	var sum int
+	err := r.DB.QueryRowContext(ctx, query, args...).Scan(&sum)
+	if err != nil {
+		return 0, err
+	}
+	return sum, nil
 }
