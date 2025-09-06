@@ -10,6 +10,9 @@ import (
 	"github.com/kmwk10/subscription-service/internal/repo"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/kmwk10/subscription-service/docs"
+	_ "github.com/kmwk10/subscription-service/internal/handlers"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func main() {
@@ -27,6 +30,7 @@ func main() {
 	r.Put("/subscriptions/{id}", handler.UpdateSubscription)
 	r.Delete("/subscriptions/{id}", handler.DeleteSubscription)
 	r.Get("/subscriptions/summary", handler.SumSubscriptions)
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	log.Println("Server started on :" + cfg.AppPort)
 	log.Fatal(http.ListenAndServe(":"+cfg.AppPort, r))
