@@ -6,39 +6,20 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewServer() *http.Server {
+func NewServer(h *Handler, port string) *http.Server {
 	r := chi.NewRouter()
 
 	r.Route("/subscriptions", func(r chi.Router) {
-		r.Post("/", createSubscription)
-		r.Get("/", listSubscriptions)
-		r.Get("/{id}", getSubscription)
-		r.Put("/{id}", updateSubscription)
-		r.Delete("/{id}", deleteSubscription)
+		r.Post("/", h.CreateSubscription)
+		r.Get("/", h.ListSubscriptions)
+		r.Get("/{id}", h.GetSubscription)
+		r.Put("/{id}", h.UpdateSubscription)
+		r.Delete("/{id}", h.DeleteSubscription)
+		r.Get("/summary", h.SumSubscriptions)
 	})
 
 	return &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + port,
 		Handler: r,
 	}
-}
-
-func createSubscription(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("create subscription"))
-}
-
-func listSubscriptions(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("list subscriptions"))
-}
-
-func getSubscription(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("get subscription"))
-}
-
-func updateSubscription(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("update subscription"))
-}
-
-func deleteSubscription(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("delete subscription"))
 }
