@@ -21,7 +21,4 @@ docker compose up --build
 The service will be available at http://localhost:8080.
 
 ## API Documentation
-You can access the Swagger UI at:
-```bash
-http://localhost:8080/swagger/index.html
-```
+You can access the Swagger UI at http://localhost:8080/swagger/index.html.
