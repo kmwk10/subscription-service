@@ -18,10 +18,18 @@ func NewSubscriptionRepo(db *sql.DB) *SubscriptionRepo {
 	return &SubscriptionRepo{DB: db}
 }
 
+func nilIfZero(t *models.MonthYear) *time.Time {
+	if t == nil {
+		return nil
+	}
+	tt := time.Time(*t)
+	return &tt
+}
+
 func (r *SubscriptionRepo) Create(ctx context.Context, s *models.Subscription) error {
 	_, err := r.DB.ExecContext(ctx,
 		"INSERT INTO subscriptions (service_name, price, user_id, start_date, end_date) VALUES ($1, $2, $3, $4, $5)",
-		s.ServiceName, s.Price, s.UserID, s.StartDate, s.EndDate,
+		s.ServiceName, s.Price, s.UserID, time.Time(s.StartDate), nilIfZero(s.EndDate),
 	)
 	if err != nil {
 		log.Printf("Error creating subscription: %v", err)
@@ -50,7 +58,7 @@ func (r *SubscriptionRepo) GetByID(ctx context.Context, id int) (*models.Subscri
 func (r *SubscriptionRepo) Update(ctx context.Context, s *models.Subscription) error {
 	_, err := r.DB.ExecContext(ctx,
 		"UPDATE subscriptions SET service_name=$1, price=$2, user_id=$3, start_date=$4, end_date=$5 WHERE id=$6",
-		s.ServiceName, s.Price, s.UserID, s.StartDate, s.EndDate, s.ID,
+		s.ServiceName, s.Price, s.UserID, time.Time(s.StartDate), nilIfZero(s.EndDate), s.ID,
 	)
 	if err != nil {
 		log.Printf("Error updating subscription id %d: %v", s.ID, err)
@@ -92,9 +100,15 @@ func (r *SubscriptionRepo) List(ctx context.Context) ([]*models.Subscription, er
 }
 
 func (r *SubscriptionRepo) SumPrice(ctx context.Context, userID string, serviceName string, start, end time.Time) (int, error) {
-	query := `SELECT COALESCE(SUM(price), 0) FROM subscriptions WHERE start_date >= $1 AND start_date <= $2`
+	query := `
+	SELECT service_name, price, start_date, end_date
+	FROM subscriptions
+	WHERE (end_date IS NULL OR end_date >= $1)
+	  AND start_date <= $2
+	`
 	args := []interface{}{start, end}
 	i := 3
+
 	if userID != "" {
 		query += fmt.Sprintf(" AND user_id = $%d", i)
 		args = append(args, userID)
@@ -106,12 +120,57 @@ func (r *SubscriptionRepo) SumPrice(ctx context.Context, userID string, serviceN
 		i++
 	}
 
-	var sum int
-	err := r.DB.QueryRowContext(ctx, query, args...).Scan(&sum)
+	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
-		log.Printf("Error calculating sum price: %v", err)
+		log.Printf("Error querying subscriptions: %v", err)
 		return 0, err
 	}
-	log.Printf("Calculated sum price: %d for user %s service %s", sum, userID, serviceName)
-	return sum, nil
+	defer rows.Close()
+
+	total := 0
+	for rows.Next() {
+		var sName string
+		var price int
+		var sStart time.Time
+		var sEnd *time.Time
+		if err := rows.Scan(&sName, &price, &sStart, &sEnd); err != nil {
+			log.Printf("Error scanning subscription: %v", err)
+			return 0, err
+		}
+
+		subStart := sStart
+		subEnd := sEnd
+		if subEnd == nil {
+			subEnd = &end
+		}
+
+		periodStart := maxTime(subStart, start)
+		periodEnd := minTime(*subEnd, end)
+
+		if !periodStart.After(periodEnd) {
+			months := monthDiff(periodStart, periodEnd) + 1
+			total += price * months
+		}
+	}
+
+	log.Printf("Calculated total sum price: %d for user %s service %s", total, userID, serviceName)
+	return total, nil
+}
+
+func minTime(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
+}
+
+func monthDiff(start, end time.Time) int {
+	return int((end.Year()-start.Year())*12 + int(end.Month()) - int(start.Month()))
 }
