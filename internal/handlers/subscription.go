@@ -30,7 +30,7 @@ func (h *Handler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := h.Repo.Create(&s); err != nil {
+	if err := h.Repo.Create(r.Context(), &s); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -46,8 +46,12 @@ func (h *Handler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} models.Subscription
 // @Router /subscriptions/{id} [get]
 func (h *Handler) GetSubscription(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	s, err := h.Repo.GetByID(id)
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	s, err := h.Repo.GetByID(r.Context(), id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -65,14 +69,18 @@ func (h *Handler) GetSubscription(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} models.Subscription
 // @Router /subscriptions/{id} [put]
 func (h *Handler) UpdateSubscription(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
 	var s models.Subscription
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	s.ID = id
-	if err := h.Repo.Update(&s); err != nil {
+	if err := h.Repo.Update(r.Context(), &s); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -86,8 +94,12 @@ func (h *Handler) UpdateSubscription(w http.ResponseWriter, r *http.Request) {
 // @Success 204
 // @Router /subscriptions/{id} [delete]
 func (h *Handler) DeleteSubscription(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	if err := h.Repo.Delete(id); err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	if err := h.Repo.Delete(r.Context(), id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -101,7 +113,7 @@ func (h *Handler) DeleteSubscription(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} models.Subscription
 // @Router /subscriptions [get]
 func (h *Handler) ListSubscriptions(w http.ResponseWriter, r *http.Request) {
-	subs, err := h.Repo.List()
+	subs, err := h.Repo.List(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
